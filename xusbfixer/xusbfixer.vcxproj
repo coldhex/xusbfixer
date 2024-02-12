@@ -88,6 +88,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -106,16 +107,34 @@
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
   </ItemDefinitionGroup>
+  <Target Name="MySetStampInfVersion" BeforeTargets="InitializeBuildStatus" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Exec Command="powershell -Command &quot;&amp; { try { (@(git tag --points-at HEAD | Select-String 'v\d+.\d+.\d+.\d+') + '*' | Select -First 1) -replace '^v','' } catch { Write-Output '*' } }&quot; 2&gt;NUL" WorkingDirectory="$(SolutionDir)" ConsoleToMsBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitVersionTag" />
+    </Exec>
+    <SetEnv Name="STAMPINF_VERSION" Prefix="false" Value="$(GitVersionTag)" />
+  </Target>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WppEnabled>true</WppEnabled>
       <WppRecorderEnabled>true</WppRecorderEnabled>
       <WppScanConfigurationData Condition="'%(ClCompile.ScanConfigurationData)' == ''">trace.h</WppScanConfigurationData>
       <WppKernelMode>true</WppKernelMode>
+      <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <Inf>
+      <SpecifyDriverVerDirectiveVersion>false</SpecifyDriverVerDirectiveVersion>
+    </Inf>
+    <PostBuildEvent>
+      <Command>powershell -Command "&amp; { $MYVER = Invoke-Expression '(Get-Content ''$(PackageDir)*.inf'' | Select-String DriverVer | Convertfrom-Stringdata).DriverVer -replace ''(.*)/(.*)/(.*),(.*)\.(.*)\.(.*)\.(.*)'',''$3-$1-$2_$4.$5.$6.$7'''; Compress-Archive -Path '$(PackageDir)' -DestinationPath """$(TargetDir)$(TargetName)_$(Platform)_$MYVER.zip""" -Force }"</Command>
+      <Message>Creating a ZIP file of the packaged files</Message>
+    </PostBuildEvent>
+    <Link>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <Profile>false</Profile>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
@@ -141,6 +160,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
+    <FilesToPackage Include="..\uninstall-xusbfixer.ps1" Condition="'$(Configuration)'=='Release'" />
+    <FilesToPackage Include="..\README.md" Condition="'$(Configuration)'=='Release'" />
+    <FilesToPackage Include="..\LICENSE.txt" Condition="'$(Configuration)'=='Release'" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
