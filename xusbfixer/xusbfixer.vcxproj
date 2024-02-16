@@ -128,12 +128,14 @@
       <SpecifyDriverVerDirectiveVersion>false</SpecifyDriverVerDirectiveVersion>
     </Inf>
     <PostBuildEvent>
-      <Command>powershell -Command "&amp; { $MYVER = Invoke-Expression '(Get-Content ''$(PackageDir)*.inf'' | Select-String DriverVer | Convertfrom-Stringdata).DriverVer -replace ''(.*)/(.*)/(.*),(.*)\.(.*)\.(.*)\.(.*)'',''$3-$1-$2_$4.$5.$6.$7'''; Compress-Archive -Path '$(PackageDir)' -DestinationPath """$(TargetDir)$(TargetName)_$(Platform)_$MYVER.zip""" -Force }"</Command>
+      <Command>
+        powershell -Command "&amp; { $pdbFile = '$(OutDir)$(TargetName).pdb'; $outFile='$(PackageDir)$(TargetName).pdb'; [System.IO.File]::WriteAllBytes($outFile, [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetBytes([System.Text.Encoding]::GetEncoding('ISO-8859-1').GetString([System.IO.File]::ReadAllBytes($pdbFile)).Replace('$(SolutionDir)', 'C:\' + ('X'*('$(SolutionDir)'.Length - 4)) + '\'))) }"
+        powershell -Command "&amp; { $MYVER = Invoke-Expression '(Get-Content ''$(PackageDir)*.inf'' | Select-String DriverVer | Convertfrom-Stringdata).DriverVer -replace ''(.*)/(.*)/(.*),(.*)\.(.*)\.(.*)\.(.*)'',''$3-$1-$2_$4.$5.$6.$7'''; Compress-Archive -Path '$(PackageDir)' -DestinationPath """$(TargetDir)$(TargetName)_$(Platform)_$MYVER.zip""" -Force }"
+      </Command>
       <Message>Creating a ZIP file of the packaged files</Message>
     </PostBuildEvent>
     <Link>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
-      <Profile>false</Profile>
+      <AdditionalOptions>/pdbaltpath:%_PDB% %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
